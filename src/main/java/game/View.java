@@ -19,8 +19,6 @@ import java.util.regex.Pattern;
 public class View extends Application {
     private Controller controller;
 
-    private Model.BotGamer botGamer;
-
     public static final double MAIN_BOARD_SIZE = 750.0;
 
     private boolean botGame = false;
@@ -78,20 +76,10 @@ public class View extends Application {
         button.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 300); //
         hint.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 350); //
 
-        // TODO REPAIR BOT
-//        button.setOnMouseClicked(event -> {
-//            botGame = true;
-//            botGamer.play();
-//            botGame = false;
-//            gameIsFinished = gamer.board.lostTheGame() || gamer.board.wonTheGame();
-//            controller.openCells();
-//            if (gameIsFinished) {
-//                Pair<Integer, Integer> coords = botGamer.getLastGuess();
-//                end(controller.getTile(coords.getKey(), coords.getValue()));
-//                button.setDisable(gameIsFinished);
-//                hint.setDisable(gameIsFinished);
-//            }
-//        });
+        button.setOnMouseClicked(event -> {
+            button.setDisable(true);
+            controller.onSolverClick();
+        });
         hint.setOnMouseClicked(event -> {
             controller.onHintAsked();
         });
@@ -195,21 +183,13 @@ public class View extends Application {
 
         public static final Image IMAGE_BOOM = new Image("bomb_boom.png");
 
-//        private boolean hasFlag = false;
 
-        private boolean isOpen = false;
-
-        public boolean isOpen() {
-            return isOpen;
-        }
 
         public void open(int numOfNeighbours) {
-            isOpen = true;
             setFill(new ImagePattern(getImageNumber(numOfNeighbours)));
         }
 
         public void openAsBomb() {
-            isOpen = true;
             setFill(new ImagePattern(IMAGE_BOMB));
         }
 
@@ -227,9 +207,6 @@ public class View extends Application {
             setFill(new ImagePattern(IMAGE_BOOM));
         }
 
-//        public boolean hasFlag() {
-//            return hasFlag;
-//        }
 
         public void setFlag(boolean hasFlag) {
             if (hasFlag) {
@@ -253,23 +230,12 @@ public class View extends Application {
 
     private void bindHandlers() {
         Scene scene = new Scene(root);
-        // TODO REPAIR botGamer
-//        botGamer = new Model.BotGamer(gamer);
         primaryStage.setScene(scene);
         primaryStage.show();
         scene.setOnMouseClicked(event -> {
-            if (botGame) {
-                return;
-            }
             int x = (int) (event.getSceneX() / tileSize);
             int y = (int) (event.getSceneY() / tileSize);
             if (y >= boardSize || x >= boardSize) {
-                return;
-            }
-
-            Tile selectedTile = getTile(x, y);
-
-            if (selectedTile.isOpen()) {
                 return;
             }
 

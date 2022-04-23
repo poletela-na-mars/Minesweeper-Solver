@@ -4,49 +4,66 @@ import javafx.util.Pair;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.function.Function;
 
-//board + cell + gamer + bot gamer + group cells
+//board + cell + bot gamer + group cells
 public class Model {
 
-    private Board board;
+    private final Board board;
 
-//    private Gamer gamer;
+    private Model.BotGamer bot;
 
     public final int size;
     public final int numOfBombs;
 
 
-    public Model(int size, int numOfBombs) {
+    public Model(int size, int numOfBombs, OnOpenCellListener onOpenCellListener) {
         this.size = size;
         this.numOfBombs = numOfBombs;
-        this.board = new Board(size, numOfBombs);
-//        this.gamer = new Gamer(size, numOfBombs);
+        this.board = new Board(size, numOfBombs, onOpenCellListener);
     }
 
     public Board getBoard() {
         return this.board;
     }
 
-/*
-    public Gamer getGamer() {
-        return this.gamer;
+    public void solveWithBot(Function<Void, Void> onFinish) {
+        this.bot = new BotGamer(board);
+
+        Thread solutionThread = new Thread(() -> {
+            bot.play();
+            onFinish.apply(null);
+        });
+
+        solutionThread.start();
+
     }
-*/
+
+    public int getNumOfGuesses() {
+        return board.numOfGuesses;
+    }
+
 
     static class Board {
         private boolean lostTheGame = false;
 
         private boolean wonTheGame = false;
 
-        private Cell[][] cells;
+        private final Cell[][] cells;
 
-        private int size;
+        private final int size;
 
-        private int numOfBombs;
+        private final int numOfBombs;
 
-        public Board(int size, int numOfBombs) {
+        private OnOpenCellListener onOpenCellListener;
+
+        private int numOfGuesses = 0;
+
+
+        public Board(int size, int numOfBombs, OnOpenCellListener onOpenCellListener) {
             this.size = size;
             this.numOfBombs = numOfBombs;
+            this.onOpenCellListener = onOpenCellListener;
             cells = new Cell[size][size];
 
             //Инициализируем
@@ -85,19 +102,17 @@ public class Model {
                     }
                 }
             }
+            numOfGuesses++;
         }
 
         public void guess(int x, int y) {
+            numOfGuesses++;
             System.out.printf("Open %d,%d%n", x, y);
 
             //Проиграл?
             if (cells[x][y].hasBomb()) {
-                for (int i = 0; i < size; i++) {
-                    for (int j = 0; j < size; j++) {
-                        cells[i][j].open();
-                    }
-                }
-                //(нужно все ячейки сделать известными)
+                cells[x][y].open();
+                onOpenCellListener.onOpenCell(cells[x][y], true);
                 lostTheGame = true;
                 return;
             }
@@ -118,6 +133,7 @@ public class Model {
                 Cell current = intendToVisit.remove();
                 visited.add(current);
                 current.open();
+                onOpenCellListener.onOpenCell(current, false);
 
                 if (current.neighbourBombs > 0) {
                     continue;
@@ -137,7 +153,6 @@ public class Model {
         }
 
         public void printProcess() {
-            //TODO когда проиграл, то не принтится с -1. И когда выиграл, то показывает шаг до показа всего поля (хз, надо ли)
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < size; j++) {
                     Integer value = cells[j][i].isOpen()
@@ -185,6 +200,10 @@ public class Model {
         ReadableCell[][] getReadableCells() {
             return cells;
         }
+
+        public int getNumOfGuesses() {
+            return numOfGuesses;
+        }
     }
 
     public interface ReadableCell {
@@ -192,6 +211,9 @@ public class Model {
         int getNeighbourBombs();
         boolean isOpen();
         boolean hasFlag();
+
+        int x();
+        int y();
     }
 
     static class Cell implements ReadableCell {
@@ -252,6 +274,15 @@ public class Model {
             isOpen = true;
         }
 
+        @Override
+        public int x() {
+            return x;
+        }
+
+        @Override
+        public int y() {
+            return y;
+        }
     }
 
     /*class Gamer {
@@ -311,10 +342,21 @@ public class Model {
         public boolean isOpen() {
             return delegate.isOpen();
         }
+
+        @Override
+        public int x() {
+            return delegate.x();
+        }
+
+        @Override
+        public int y() {
+            return delegate.y();
+        }
     }
 
     static class BotGamer {
 
+        // TODO it's unused
         private Pair<Integer, Integer> lastGuess;
 
         private Board board;
@@ -327,14 +369,9 @@ public class Model {
 
         private final SolverCell[][] cells;
 
-        private boolean guess(int x, int y) {
-
-            board.guess(x, y);
-            lastGuess = new Pair<>(x, y);
-            return board.lostTheGame() || board.wonTheGame();
-        }
 
         public BotGamer(Board board) {
+            this.board = board;
             coordinates = new ArrayList<>();
 
             ReadableCell[][] readableCells = board.getReadableCells();
@@ -410,9 +447,14 @@ public class Model {
             for (GroupCells group : groups) {
                 if (group.getBombsCount() == 0 && group.getGroup().size() != 0) {
                     for (Pair<Integer, Integer> pair : group.getGroup()) {
-                        if (guess(pair.getKey(), pair.getValue())) {
+                        board.guess(pair.getKey(), pair.getValue());
+                        if (board.gameFinished()) {
                             return true;
                         }
+                        // analogue is upper
+//                        if (guess(pair.getKey(), pair.getValue())) {
+//                            return true;
+//                        }
                     }
                     res = true;
                 }
@@ -521,7 +563,10 @@ public class Model {
                 }
                 if (bombInCellCases[i] == 0) {
                     res = true;
-                    if (guess(x, y)) {
+
+                    board.guess(x, y);
+
+                    if (board.gameFinished()) {
                         return true;
                     }
                 }
@@ -529,9 +574,8 @@ public class Model {
                 return res;
         }
 
-        boolean isFirstClick = true;
         public void play() {
-            while (gameIsNotFinished()) {
+            while (!board.gameFinished()) {
                 coordinates.removeIf(coord -> cells[coord.getKey()][coord.getValue()].isOpen());
                 makeGroups();
                 if (!setGuaranteed()) {
@@ -543,31 +587,16 @@ public class Model {
                     if (coordinates.size() == 0) {
                         continue;
                     }
-                    if (isFirstClick) {
-                        int index = (int) (Math.random() * coordinates.size());
-                        Pair<Integer, Integer> pair = coordinates.get(index);
-                        while (board.cells[pair.getKey()][pair.getValue()].hasBomb()) {
-                            index = (int) (Math.random() * coordinates.size());
-                            pair = coordinates.get(index);
-                        }
-                        guess(pair.getKey(), pair.getValue());
-                        isFirstClick = false;
-                        continue;
-                    }
+
                     int index = (int) (Math.random() * coordinates.size());
                     Pair<Integer, Integer> pair = coordinates.get(index);
-                    guess(pair.getKey(), pair.getValue());
+                    board.guess(pair.getKey(), pair.getValue());
+
                 }
             }
         }
 
-        public Pair<Integer, Integer> getLastGuess() {
-            return lastGuess;
-        }
 
-        public boolean gameIsNotFinished() {
-            return !(board.lostTheGame() || board.wonTheGame());
-        }
     }
 
     static class GroupCells {
@@ -637,6 +666,12 @@ public class Model {
         public int hashCode() {
             return Objects.hash(group, bombsCount);
         }
+    }
+
+
+    @FunctionalInterface
+    interface OnOpenCellListener {
+        void onOpenCell(ReadableCell cell, boolean asBoomCell);
     }
 }
 
