@@ -15,7 +15,6 @@ public class Controller extends Rectangle {
     private boolean isFirstClick = true;
     private boolean botGame = false;
 
-
     private boolean gameEnded = false;
 
     private final View view;
@@ -27,9 +26,9 @@ public class Controller extends Rectangle {
     }
 
     public void onInitialParametersSet(int size, int numOfBombs) {
-        this.logicModel = new Model(size, numOfBombs, this::openTile);
+        this.logicModel = new Model(size, numOfBombs, this::openTile);  //передадим ссылку на функцию openTile
 
-        view.createContent(logicModel.getBoard().getReadableCells());
+        view.createContent();
     }
 
     public void onTileFlagClick(int x, int y) {
@@ -90,11 +89,8 @@ public class Controller extends Rectangle {
     }
 
     public void onTileClick(int x, int y) {
-        if (botGame || gameEnded || logicModel.getBoard().getCells()[x][y].isOpen()) {
-            return;
-        }
-
-        if (logicModel.getBoard().getCells()[x][y].hasFlag()) {
+        if (botGame || gameEnded || logicModel.getBoard().getCells()[x][y].isOpen() ||
+                logicModel.getBoard().getCells()[x][y].hasFlag()) {
             return;
         }
 
@@ -103,7 +99,6 @@ public class Controller extends Rectangle {
             logicModel.getBoard().set(x, y);
             view.enableHint(true);
         }
-
         logicModel.getBoard().guess(x, y);
 
         checkFinish();
@@ -130,9 +125,7 @@ public class Controller extends Rectangle {
         }
     }
 
-
     private void openTile(Model.ReadableCell cell, boolean asBoom) {
-//        System.out.println("pls open x=" + cell.x() + ", y=" + cell.y() + ", which is bomb=" + cell.hasBomb());
         if (cell.hasBomb()) {
             if (asBoom) {
                 view.makeBoom(cell.x(), cell.y());
@@ -143,7 +136,6 @@ public class Controller extends Rectangle {
             view.openTile(cell.x(), cell.y(), cell.getNeighbourBombs());
         }
     }
-
 
     private void openAll() {
         for (int i = 0; i < logicModel.size; i++) {
@@ -162,5 +154,4 @@ public class Controller extends Rectangle {
             }
         }
     }
-
 }

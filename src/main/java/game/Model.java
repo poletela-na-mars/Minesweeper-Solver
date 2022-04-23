@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.function.Function;
 
-//board + cell + bot gamer + group cells
+//Board + Cell + SolverCell + BotGamer + GroupCells (+ interface ReadableCell)
 public class Model {
 
     private final Board board;
@@ -15,7 +15,6 @@ public class Model {
 
     public final int size;
     public final int numOfBombs;
-
 
     public Model(int size, int numOfBombs, OnOpenCellListener onOpenCellListener) {
         this.size = size;
@@ -36,13 +35,11 @@ public class Model {
         });
 
         solutionThread.start();
-
     }
 
     public int getNumOfGuesses() {
         return board.numOfGuesses;
     }
-
 
     static class Board {
         private boolean lostTheGame = false;
@@ -55,10 +52,9 @@ public class Model {
 
         private final int numOfBombs;
 
-        private OnOpenCellListener onOpenCellListener;
+        private final OnOpenCellListener onOpenCellListener;
 
         private int numOfGuesses = 0;
-
 
         public Board(int size, int numOfBombs, OnOpenCellListener onOpenCellListener) {
             this.size = size;
@@ -73,7 +69,6 @@ public class Model {
                 }
             }
         }
-
 
         public void set(int xClick, int yClick) {
             //Ставим бомбы
@@ -102,7 +97,6 @@ public class Model {
                     }
                 }
             }
-            numOfGuesses++;
         }
 
         public void guess(int x, int y) {
@@ -112,7 +106,7 @@ public class Model {
             //Проиграл?
             if (cells[x][y].hasBomb()) {
                 cells[x][y].open();
-                onOpenCellListener.onOpenCell(cells[x][y], true);
+                onOpenCellListener.onOpenCell(cells[x][y], true);   //interface -> controller -> view
                 lostTheGame = true;
                 return;
             }
@@ -148,7 +142,6 @@ public class Model {
                     intendToVisit.add(cells[current.x][current.y - 1]);
                 if (current.y < size - 1 && !cells[current.x][current.y + 1].hasBomb() && !visited.contains(cells[current.x][current.y + 1]))
                     intendToVisit.add(cells[current.x][current.y + 1]);
-
             }
         }
 
@@ -184,7 +177,6 @@ public class Model {
             return cells;
         }
 
-
         public boolean gameFinished() {
             return lostTheGame || wonTheGame;
         }
@@ -201,9 +193,9 @@ public class Model {
             return cells;
         }
 
-        public int getNumOfGuesses() {
+        /*public int getNumOfGuesses() {
             return numOfGuesses;
-        }
+        }*/
     }
 
     public interface ReadableCell {
@@ -229,7 +221,6 @@ public class Model {
 
         int neighbourBombs;
 
-
         public Cell(int x, int y) {
             this.x = x;
             this.y = y;
@@ -252,7 +243,6 @@ public class Model {
         public void setFlag(boolean set) {
             flagged = set;
         }
-
 
         public void addNeighbourBomb() {
             neighbourBombs++;
@@ -285,26 +275,6 @@ public class Model {
         }
     }
 
-    /*class Gamer {
-
-        private final int size;
-
-        private final int numOfBombs;
-
-        public Gamer(int size, int numOfBombs) {
-            this.size = size;
-            this.numOfBombs = numOfBombs;
-        }
-
-        public int getNumOfBombs() {
-            return numOfBombs;
-        }
-
-        public int getSize() {
-            return size;
-        }
-    }*/
-
     static class SolverCell implements ReadableCell {
 
         private final ReadableCell delegate;
@@ -319,9 +289,9 @@ public class Model {
             isPossibleBomb = isBomb;
         }
 
-        public boolean isPossibleBomb() {
+        /*public boolean isPossibleBomb() {
             return isPossibleBomb;
-        }
+        }*/
 
         @Override
         public boolean hasBomb() {
@@ -355,11 +325,9 @@ public class Model {
     }
 
     static class BotGamer {
+        //private Pair<Integer, Integer> lastGuess;
 
-        // TODO it's unused
-        private Pair<Integer, Integer> lastGuess;
-
-        private Board board;
+        private final Board board;
 
         private int detectedBombs;
 
@@ -425,7 +393,7 @@ public class Model {
                 lastGroups.addAll(groups);
                 groups.clear();
                 for (GroupCells group : lastGroups) {
-                    groups.addAll(group.split()); //разбивка по группам по количеств бомб в группе
+                    groups.addAll(group.split()); //разбивка по группам по количеству бомб в группе
                 }
                 for (GroupCells group1 : groups) {
                     for (GroupCells group2 : groups) {
@@ -591,12 +559,9 @@ public class Model {
                     int index = (int) (Math.random() * coordinates.size());
                     Pair<Integer, Integer> pair = coordinates.get(index);
                     board.guess(pair.getKey(), pair.getValue());
-
                 }
             }
         }
-
-
     }
 
     static class GroupCells {
@@ -668,10 +633,9 @@ public class Model {
         }
     }
 
-
     @FunctionalInterface
     interface OnOpenCellListener {
-        void onOpenCell(ReadableCell cell, boolean asBoomCell);
+        void onOpenCell(ReadableCell cell, boolean asBoomCell); //в controller openTile()
     }
 }
 

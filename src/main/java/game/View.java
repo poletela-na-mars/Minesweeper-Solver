@@ -21,13 +21,15 @@ public class View extends Application {
 
     public static final double MAIN_BOARD_SIZE = 750.0;
 
-    private boolean botGame = false;
+    //private final boolean botGame = false;
 
     public static final ImagePattern FLAG = new ImagePattern(new Image("flag.png"));
 
     public static final ImagePattern FLAG_SELECTED = new ImagePattern(new Image("flag_selected.png"));
 
     public static final ImagePattern FLAG_NOT_SELECTED = new ImagePattern(new Image("flag_not_selected.png"));
+
+    private static final Image imageIcon = new Image("minesweeper_icon.jpg");
 
     public static final int DEFAULT_BOARD_SIZE = 10;
 
@@ -37,7 +39,7 @@ public class View extends Application {
 
     String regex = "\\d+";
 
-    private Stage appStage = new Stage();
+    private final Stage appStage = new Stage();
     
     public static int boardSize = DEFAULT_BOARD_SIZE;
 
@@ -47,18 +49,15 @@ public class View extends Application {
 
     public static Group tileGroup = new Group();
 
-    private Button hint = new Button("Hint");
-    private Button button = new Button("Solver");
-    private Pane root = new Pane();
-    private Rectangle flag = new Rectangle();
-
+    private final Button buttonHint = new Button("Hint");
+    private final Button buttonSolver = new Button("Solver");
+    private final Pane root = new Pane();
+    private final Rectangle flag = new Rectangle();
 
     private Stage primaryStage;
 
-
-    public void createContent(Model.ReadableCell[][] cells) {
+    public void createContent() {
         tileSize = tileSize();
-
         root.setPrefSize(MAIN_BOARD_SIZE, MAIN_BOARD_SIZE + 50);//убрать
         flag.setWidth(60);//
         flag.setHeight(60);//
@@ -73,17 +72,15 @@ public class View extends Application {
         });
         flag.setFill(FLAG_NOT_SELECTED);
 
-        button.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 300); //
-        hint.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 350); //
+        buttonSolver.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 300); //
+        buttonHint.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 350); //
 
-        button.setOnMouseClicked(event -> {
-            button.setDisable(true);
+        buttonSolver.setOnMouseClicked(event -> {
+            buttonSolver.setDisable(true);
             controller.onSolverClick();
         });
-        hint.setOnMouseClicked(event -> {
-            controller.onHintAsked();
-        });
-        root.getChildren().addAll(tileGroup, flag, button, hint);
+        buttonHint.setOnMouseClicked(event -> controller.onHintAsked());
+        root.getChildren().addAll(tileGroup, flag, buttonSolver, buttonHint);
 
         for (int i = 0; i < boardSize; i++) {
             for (int j = 0; j < boardSize; j++) {
@@ -91,7 +88,6 @@ public class View extends Application {
                 tileGroup.getChildren().add(tile);
             }
         }
-
         bindHandlers();
     }
 
@@ -103,40 +99,41 @@ public class View extends Application {
         } else {
             message = "You won the game!";
         }
-        Label label1 = new Label(message);
-        label1.relocate(10.0, 0.0);
-        Label label2 = new Label(String.format("Attempts' count: %d", numOfGuesses));
-        label2.relocate(10.0, 50.0);
-        root.getChildren().addAll(label1, label2);
+        Label labelWonOrLost = new Label(message);
+        labelWonOrLost.relocate(10.0, 0.0);
+        Label labelAttempts = new Label(String.format("Attempts' count: %d", numOfGuesses));
+        labelAttempts.relocate(10.0, 50.0);
+        root.getChildren().addAll(labelWonOrLost, labelAttempts);
         root.setPrefSize(50.0, 100.0);
         appStage.setScene(new Scene(root));
         appStage.show();
     }
 
-    private void initialise() {
-        appStage.getIcons().add(Tile.IMAGE_BOMB);
+    private void initialiseBoard() {
+        appStage.getIcons().add(imageIcon);
         Pane root = new Pane();
-        TextField textField1 = new TextField(String.format("%d", DEFAULT_BOARD_SIZE));
-        textField1.relocate(100.0, 0.0);
-        textField1.setPrefSize(40.0, 15.0);
-        Label label1 = new Label("Size of field:");
-        label1.relocate(10, 0);
-        TextField textField2 = new TextField(String.format("%d", DEFAULT_NUM_OF_BOMBS));
-        textField2.relocate(100, 30);
-        textField2.setPrefSize(40, 15);
-        Label label2 = new Label("Bombs' count:");
-        label2.relocate(10, 30);
-        Button button = new Button("OK");
-        button.relocate(50, 60);
-        button.setOnMouseClicked(event -> {
-            if (Pattern.matches(regex, textField1.getText()) && Pattern.matches(regex, textField2.getText())) {
-                boardSize = Integer.parseInt(textField1.getText());
+        TextField sizeOfField = new TextField(String.format("%d", DEFAULT_BOARD_SIZE));
+        sizeOfField.relocate(100.0, 0.0);
+        sizeOfField.setPrefSize(40.0, 15.0);
+        Label labelSize = new Label("Size of field:");
+        labelSize.relocate(10, 0);
+        TextField bombsCount = new TextField(String.format("%d", DEFAULT_NUM_OF_BOMBS));
+        bombsCount.relocate(100, 30);
+        bombsCount.setPrefSize(40, 15);
+        Label labelBombsCount = new Label("Bombs' count:");
+        labelBombsCount.relocate(10, 30);
+        Button buttonOK = new Button("OK");
+        buttonOK.relocate(50, 60);
+        buttonOK.setOnMouseClicked(event -> {
+            if (Pattern.matches(regex, sizeOfField.getText()) && Pattern.matches(regex, bombsCount.getText())) {
+                boardSize = Integer.parseInt(sizeOfField.getText());
 //                textField2.clear();
 //                Double d = (Math.ceil(boardSize * 0.165));
 //                textField2.appendText(d.toString());
-                numOfBombs = Integer.parseInt(textField2.getText());
-                if ((boardSize * boardSize <= numOfBombs) || (boardSize > 30) || (boardSize < 2) || (numOfBombs < 1)) {  // если ввели бомб больше, чем поле,
-                    // или бомб на все поле, или доска больше 30х30 (для улучшения быстроты отрисовки и отклика),
+                numOfBombs = Integer.parseInt(bombsCount.getText());
+                if ((boardSize * boardSize <= numOfBombs) || (boardSize > 20) || (boardSize < 2) || (numOfBombs < 1)) {
+                    // если ввели бомб больше, чем поле,
+                    // или бомб на все поле, или доска больше 20х20 (для улучшения быстроты отрисовки и отклика),
                     // то стандартные условия
                     boardSize = DEFAULT_BOARD_SIZE;
                     numOfBombs = DEFAULT_NUM_OF_BOMBS;
@@ -144,7 +141,7 @@ public class View extends Application {
                 appStage.close();
             }
         });
-        root.getChildren().addAll(textField1, label1, textField2, label2, button);
+        root.getChildren().addAll(sizeOfField, labelSize, bombsCount, labelBombsCount, buttonOK);
         root.setPrefSize(200, 100);
         Scene beginScene = new Scene(root);
         appStage.setScene(beginScene);
@@ -154,7 +151,7 @@ public class View extends Application {
     }
 
     public void enableHint(boolean enabled) {
-        hint.setDisable(!enabled);
+        buttonHint.setDisable(!enabled);
     }
     
     static class Tile extends Rectangle {
@@ -164,17 +161,7 @@ public class View extends Application {
         int y;
 
         private static Image getImageNumber(int num) {
-            List<String> list = new ArrayList<>();
-            list.add("image0.jpg");
-            list.add("image1.jpg");
-            list.add("image2.jpg");
-            list.add("image3.jpg");
-            list.add("image4.jpg");
-            list.add("image5.jpg");
-            list.add("image6.jpg");
-            list.add("image7.jpg");
-            list.add("image8.jpg");
-            return new Image(list.get(num));
+            return new Image("image" + num + ".jpg");
         }
 
         public static final ImagePattern CLOSED_IMAGE = new ImagePattern(new Image("closed.jpg"));
@@ -214,10 +201,8 @@ public class View extends Application {
             } else {
                 setFill(CLOSED_IMAGE);
             }
-//            this.hasFlag = hasFlag;
         }
     }
-
 
     double tileSize() {
         return MAIN_BOARD_SIZE / boardSize;
@@ -226,7 +211,6 @@ public class View extends Application {
     private Tile getTile(int x, int y) {
         return (Tile) tileGroup.getChildren().get(x * View.boardSize + y);
     }
-
 
     private void bindHandlers() {
         Scene scene = new Scene(root);
@@ -253,7 +237,7 @@ public class View extends Application {
     }
 
     public void onGameFinished(boolean won, int numOfGuesses) {
-        button.setDisable(true);
+        buttonSolver.setDisable(true);
 
         showMessage(won, numOfGuesses);
     }
@@ -267,11 +251,9 @@ public class View extends Application {
         primaryStage.setResizable(false);
         primaryStage.centerOnScreen();
         primaryStage.setTitle("Minesweeper");
-
-        Image imageIcon = new Image("minesweeper_icon.jpg");
         primaryStage.getIcons().add(imageIcon);
 
-        initialise();
+        initialiseBoard();
     }
 
     public void setFlag(int x, int y) {
@@ -281,7 +263,6 @@ public class View extends Application {
     public void removeFlag(int x, int y) {
         getTile(x, y).setFlag(false);
     }
-
 
     public void openTile(int x, int y, int numOfBombs) {
         getTile(x, y).open(numOfBombs);
