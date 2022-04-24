@@ -85,7 +85,7 @@ public class Controller extends Rectangle {
             logicModel.solveWithBot();
             botGame = false;
             checkFinish();
-        });
+        }).start();
     }
 
     public void onTileClick(int x, int y) {
