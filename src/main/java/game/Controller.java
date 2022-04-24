@@ -81,10 +81,10 @@ public class Controller extends Rectangle {
             return;
         }
 
-        logicModel.solveWithBot(unused -> {
+        new Thread(() -> {
+            logicModel.solveWithBot();
             botGame = false;
-            Platform.runLater(this::checkFinish);
-            return null;
+            checkFinish();
         });
     }
 
@@ -110,7 +110,7 @@ public class Controller extends Rectangle {
             view.enableHint(false);
 
             openAll();
-            logicModel.getBoard().printProcess();
+            logicModel.getBoard().printBoardStatus();
 
             if (logicModel.getBoard().lostTheGame()) {
                 System.out.printf("DEFEAT in %s attempts", logicModel.getNumOfGuesses());
@@ -125,7 +125,7 @@ public class Controller extends Rectangle {
         }
     }
 
-    private void openTile(Model.ReadableCell cell, boolean asBoom) {
+    private void openTile(Model.Cell cell, boolean asBoom) {
         if (cell.hasBomb()) {
             if (asBoom) {
                 view.makeBoom(cell.x(), cell.y());
@@ -150,7 +150,6 @@ public class Controller extends Rectangle {
                         view.openTile(i, j, cell.neighbourBombs);
                     }
                 }
-
             }
         }
     }

@@ -1,6 +1,7 @@
 package game;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -12,8 +13,6 @@ import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Pattern;
 
 public class View extends Application {
@@ -190,7 +189,7 @@ public class View extends Application {
         }
 
 
-        public void makeBoom() {
+        public void detonateBomb() {
             setFill(new ImagePattern(IMAGE_BOOM));
         }
 
@@ -233,13 +232,13 @@ public class View extends Application {
     }
 
     public void makeBoom(int x, int y) {
-        getTile(x, y).makeBoom();
+        getTile(x, y).detonateBomb();
     }
 
     public void onGameFinished(boolean won, int numOfGuesses) {
         buttonSolver.setDisable(true);
 
-        showMessage(won, numOfGuesses);
+        Platform.runLater(() -> showMessage(won, numOfGuesses)); // выполнение на UI-потоке
     }
 
     @Override
@@ -265,11 +264,11 @@ public class View extends Application {
     }
 
     public void openTile(int x, int y, int numOfBombs) {
-        getTile(x, y).open(numOfBombs);
+        Platform.runLater(() -> getTile(x, y).open(numOfBombs));    // выполнение на UI-потоке
     }
 
     public void openTileAsBomb(int x, int y) {
-        getTile(x, y).openAsBomb();
+        Platform.runLater(() -> getTile(x, y).openAsBomb());    // выполнение на UI-потоке
     }
 
     public static void main(String[] args) {

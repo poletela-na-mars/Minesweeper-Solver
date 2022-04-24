@@ -26,15 +26,9 @@ public class Model {
         return this.board;
     }
 
-    public void solveWithBot(Function<Void, Void> onFinish) {
+    public void solveWithBot() {
         this.bot = new BotGamer(board);
-
-        Thread solutionThread = new Thread(() -> {
-            bot.play();
-            onFinish.apply(null);
-        });
-
-        solutionThread.start();
+        bot.play();
     }
 
     public int getNumOfGuesses() {
@@ -113,8 +107,8 @@ public class Model {
             //Открыть все не соседние с бомбами клетки
             openAllNulls(cells[x][y]);
 
-            analyseProcess();
-            printProcess();
+            checkIfWon();
+            printBoardStatus();
         }
 
         private void openAllNulls(Cell cell) {
@@ -145,7 +139,7 @@ public class Model {
             }
         }
 
-        public void printProcess() {
+        public void printBoardStatus() {
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < size; j++) {
                     Integer value = cells[j][i].isOpen()
@@ -159,7 +153,7 @@ public class Model {
             System.out.println();
         }
 
-        public void analyseProcess() {
+        public void checkIfWon() {
             int numOfNulls = 0;
             for (Cell[] cellRow : cells) {
                 for (Cell cell : cellRow) {
@@ -199,7 +193,7 @@ public class Model {
     }
 
     public interface ReadableCell {
-        boolean hasBomb();
+        //boolean hasBomb();
         int getNeighbourBombs();
         boolean isOpen();
         boolean hasFlag();
@@ -208,7 +202,7 @@ public class Model {
         int y();
     }
 
-    static class Cell implements ReadableCell {
+    public static class Cell implements ReadableCell {
 
         public final int x;
         public final int y;
@@ -230,7 +224,6 @@ public class Model {
             this.hasBomb = hasBomb;
         }
 
-        @Override
         public boolean hasBomb() {
             return hasBomb;
         }
@@ -293,10 +286,10 @@ public class Model {
             return isPossibleBomb;
         }*/
 
-        @Override
+        /*@Override
         public boolean hasBomb() {
             return delegate.hasBomb();
-        }
+        }*/
 
         @Override
         public int getNeighbourBombs() {
@@ -487,6 +480,7 @@ public class Model {
                 return true;
             }
             int closedCells = coordinates.size();
+
             // Для быстродействия, поскольку при нескольких известных ячейках, солвер очень долго думает
             // Если примерно половина открыта, то воспользуемся enumerationOfCombs, если нет, то рандомные клики по null в play
             if (closedCells > (board.size / 2)) {
@@ -634,8 +628,8 @@ public class Model {
     }
 
     @FunctionalInterface
-    interface OnOpenCellListener {
-        void onOpenCell(ReadableCell cell, boolean asBoomCell); //в controller openTile()
+    public interface OnOpenCellListener {
+        void onOpenCell(Cell cell, boolean asBoomCell); //в controller openTile()
     }
 }
 
