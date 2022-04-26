@@ -91,6 +91,7 @@ public class Model {
                     }
                 }
             }
+            guess(xClick, yClick);
         }
 
         public void guess(int x, int y) {
@@ -483,9 +484,10 @@ public class Model {
 
             // Для быстродействия, поскольку при нескольких известных ячейках, солвер очень долго думает
             // Если примерно половина открыта, то воспользуемся enumerationOfCombs, если нет, то рандомные клики по null в play
-            if (closedCells > (board.size / 2)) {
+            if (closedCells > ((board.size * board.size) * 0.5)) {
                 return false;
             }
+
             int combsCount = 0;
             int[] bombsPlacing = new int[closedBombs];
             int[] bombInCellCases = new int[closedCells];

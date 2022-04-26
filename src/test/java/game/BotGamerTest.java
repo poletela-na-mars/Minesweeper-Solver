@@ -18,8 +18,8 @@ public class BotGamerTest {
     public void test() {
         int won = 0;
         int lost = 0;
-        for (int i = 0; i < 1000; i++) {
-            Model model = new Model(5, 5, (cell, asBoomCell) -> {
+        for (int i = 0; i < 100; i++) {
+            Model model = new Model(10, 15, (cell, asBoomCell) -> {
             });
 
             Pair<Integer, Integer> firstRandomClick = new Pair<>(
@@ -30,8 +30,18 @@ public class BotGamerTest {
 
             model.solveWithBot();
 
-            if (model.getBoard().wonTheGame()) won++;
-            else lost++;
+//            if (model.getBoard().wonTheGame()) won++;
+//            else lost++;
+            System.out.println("-----------------------------------------------");
+            if (model.getBoard().wonTheGame()) {
+                won++;
+                System.out.println("VICTORY in " + model.getNumOfGuesses() + " attempts");
+            }
+            else {
+                lost++;
+                System.out.println("DEFEAT in " + model.getNumOfGuesses() + " attempts");
+            }
+            System.out.println("-----------------------------------------------");
         }
         boolean check = won > lost;
         System.out.println(won + " " + lost);

@@ -8,11 +8,15 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
-import javafx.scene.layout.Pane;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
+import javax.swing.text.Style;
 import java.util.regex.Pattern;
 
 public class View extends Application {
@@ -39,6 +43,7 @@ public class View extends Application {
     String regex = "\\d+";
 
     private final Stage appStage = new Stage();
+    private final Stage messageStage = new Stage();
     
     public static int boardSize = DEFAULT_BOARD_SIZE;
 
@@ -52,6 +57,8 @@ public class View extends Application {
     private final Button buttonSolver = new Button("Solver");
     private final Pane root = new Pane();
     private final Rectangle flag = new Rectangle();
+
+    private final Font font = new Font("Arial", 15);
 
     private Stage primaryStage;
 
@@ -99,30 +106,53 @@ public class View extends Application {
             message = "You won the game!";
         }
         Label labelWonOrLost = new Label(message);
-        labelWonOrLost.relocate(10.0, 0.0);
+        labelWonOrLost.relocate(25, 20);
+        labelWonOrLost.setFont(font);
         Label labelAttempts = new Label(String.format("Attempts' count: %d", numOfGuesses));
-        labelAttempts.relocate(10.0, 50.0);
+        labelAttempts.relocate(25, 50);
+        labelAttempts.setFont(font);
         root.getChildren().addAll(labelWonOrLost, labelAttempts);
-        root.setPrefSize(50.0, 100.0);
-        appStage.setScene(new Scene(root));
-        appStage.show();
+        //root.setPrefSize(50.0, 100.0);
+        root.setStyle("-fx-background-color: wheat");
+        messageStage.getIcons().add(imageIcon);
+        messageStage.setWidth(200);
+        messageStage.setHeight(130);
+        messageStage.centerOnScreen();
+        messageStage.setScene(new Scene(root));
+        messageStage.show();
     }
 
     private void initialiseBoard() {
         appStage.getIcons().add(imageIcon);
+        appStage.setWidth(390);
+        appStage.setHeight(400);
+        appStage.setResizable(false);
+        appStage.centerOnScreen();
+        appStage.initStyle(StageStyle.UNDECORATED);
+        appStage.setTitle("Initialise your board");
         Pane root = new Pane();
+        root.setStyle("-fx-background-color: wheat");
+        Label text  = new Label("Initialise your board");
+        text.setFont(font);
+        text.relocate(120, 100);
         TextField sizeOfField = new TextField(String.format("%d", DEFAULT_BOARD_SIZE));
-        sizeOfField.relocate(100.0, 0.0);
-        sizeOfField.setPrefSize(40.0, 15.0);
+        sizeOfField.relocate(250, 150);
+        sizeOfField.setPrefSize(45, 25);
+        sizeOfField.setFont(font);
         Label labelSize = new Label("Size of field:");
-        labelSize.relocate(10, 0);
+        labelSize.setFont(font);
+        labelSize.relocate(85, 150);
         TextField bombsCount = new TextField(String.format("%d", DEFAULT_NUM_OF_BOMBS));
-        bombsCount.relocate(100, 30);
-        bombsCount.setPrefSize(40, 15);
+        bombsCount.relocate(250, 200);
+        bombsCount.setPrefSize(45, 25);
+        bombsCount.setFont(font);
         Label labelBombsCount = new Label("Bombs' count:");
-        labelBombsCount.relocate(10, 30);
+        labelBombsCount.setFont(font);
+        labelBombsCount.relocate(85, 200);
         Button buttonOK = new Button("OK");
-        buttonOK.relocate(50, 60);
+        buttonOK.relocate(215, 255);
+        buttonOK.setFont(font);
+        buttonOK.setStyle("-fx-background-color: orange");
         buttonOK.setOnMouseClicked(event -> {
             if (Pattern.matches(regex, sizeOfField.getText()) && Pattern.matches(regex, bombsCount.getText())) {
                 boardSize = Integer.parseInt(sizeOfField.getText());
@@ -130,7 +160,7 @@ public class View extends Application {
 //                Double d = (Math.ceil(boardSize * 0.165));
 //                textField2.appendText(d.toString());
                 numOfBombs = Integer.parseInt(bombsCount.getText());
-                if ((boardSize * boardSize <= numOfBombs) || (boardSize > 20) || (boardSize < 2) || (numOfBombs < 1)) {
+                if ((boardSize * boardSize <= numOfBombs) || (boardSize > 25) || (boardSize < 2) || (numOfBombs < 1)) {
                     // если ввели бомб больше, чем поле,
                     // или бомб на все поле, или доска больше 20х20 (для улучшения быстроты отрисовки и отклика),
                     // то стандартные условия
@@ -140,7 +170,12 @@ public class View extends Application {
                 appStage.close();
             }
         });
-        root.getChildren().addAll(sizeOfField, labelSize, bombsCount, labelBombsCount, buttonOK);
+        Button quit = new Button("Quit");
+        quit.setStyle("-fx-background-color: orange");
+        quit.relocate(120, 255);
+        quit.setFont(font);
+        quit.setOnMouseClicked(event -> System.exit(0));
+        root.getChildren().addAll(sizeOfField, labelSize, bombsCount, labelBombsCount, buttonOK, text, quit);
         root.setPrefSize(200, 100);
         Scene beginScene = new Scene(root);
         appStage.setScene(beginScene);

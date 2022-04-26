@@ -73,7 +73,7 @@ public class Controller extends Rectangle {
                     new Random().nextInt(logicModel.size)
             );
             logicModel.getBoard().set(firstRandomClick.getKey(), firstRandomClick.getValue());
-            logicModel.getBoard().guess(firstRandomClick.getKey(), firstRandomClick.getValue());
+//            logicModel.getBoard().guess(firstRandomClick.getKey(), firstRandomClick.getValue());
         }
 
         checkFinish();
@@ -99,7 +99,9 @@ public class Controller extends Rectangle {
             logicModel.getBoard().set(x, y);
             view.enableHint(true);
         }
-        logicModel.getBoard().guess(x, y);
+        else {
+            logicModel.getBoard().guess(x, y);
+        }
 
         checkFinish();
     }
