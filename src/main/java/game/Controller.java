@@ -1,7 +1,6 @@
 package game;
 
 
-import javafx.application.Platform;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Pair;
 
@@ -130,7 +129,7 @@ public class Controller extends Rectangle {
     private void openTile(Model.Cell cell, boolean asBoom) {
         if (cell.hasBomb()) {
             if (asBoom) {
-                view.makeBoom(cell.x(), cell.y());
+                view.detonateBomb(cell.x(), cell.y());
             } else {
                 view.openTileAsBomb(cell.x(), cell.y());
             }

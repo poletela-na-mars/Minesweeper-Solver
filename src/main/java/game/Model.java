@@ -283,6 +283,12 @@ public class Model {
             isPossibleBomb = isBomb;
         }
 
+        private boolean isMaybeBomb;
+
+        public void markAsMaybeBomb(boolean isBomb) {
+            isMaybeBomb = isBomb;
+        }
+
         /*public boolean isPossibleBomb() {
             return isPossibleBomb;
         }*/
@@ -484,7 +490,7 @@ public class Model {
 
             // Для быстродействия, поскольку при нескольких известных ячейках, солвер очень долго думает
             // Если примерно половина открыта, то воспользуемся enumerationOfCombs, если нет, то рандомные клики по null в play
-            if (closedCells > ((board.size * board.size) * 0.5)) {
+            if (closedCells > ((board.size * board.size) * 0.6)) {
                 return false;
             }
 
@@ -525,6 +531,9 @@ public class Model {
                     detectedBombs++;
                     cells[x][y].markAsPossibleBomb(true);
                 }
+                if (bombInCellCases[i] > 0) {
+                    cells[x][y].markAsMaybeBomb(true);
+                }
                 if (bombInCellCases[i] == 0) {
                     res = true;
 
@@ -554,6 +563,18 @@ public class Model {
 
                     int index = (int) (Math.random() * coordinates.size());
                     Pair<Integer, Integer> pair = coordinates.get(index);
+                    int count = 0;
+                    for (SolverCell[] cell : cells) {
+                        for (SolverCell c : cell) {
+                            if (c.isMaybeBomb) count++;
+                        }
+                    }
+                    if (count != coordinates.size()) {
+                        while (cells[pair.getKey()][pair.getValue()].isMaybeBomb) {
+                            index = (int) (Math.random() * coordinates.size());
+                            pair = coordinates.get(index);
+                        }
+                    }
                     board.guess(pair.getKey(), pair.getValue());
                 }
             }

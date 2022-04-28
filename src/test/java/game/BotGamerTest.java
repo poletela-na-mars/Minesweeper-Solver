@@ -19,7 +19,7 @@ public class BotGamerTest {
         int won = 0;
         int lost = 0;
         for (int i = 0; i < 100; i++) {
-            Model model = new Model(10, 15, (cell, asBoomCell) -> {
+            Model model = new Model(9, 10, (cell, asBoomCell) -> {
             });
 
             Pair<Integer, Integer> firstRandomClick = new Pair<>(

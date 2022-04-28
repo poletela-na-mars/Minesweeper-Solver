@@ -64,6 +64,7 @@ public class View extends Application {
 
     public void createContent() {
         tileSize = tileSize();
+        root.setStyle("-fx-background-color: blanchedalmond");
         root.setPrefSize(MAIN_BOARD_SIZE, MAIN_BOARD_SIZE + 50);//убрать
         flag.setWidth(60);//
         flag.setHeight(60);//
@@ -78,8 +79,12 @@ public class View extends Application {
         });
         flag.setFill(FLAG_NOT_SELECTED);
 
-        buttonSolver.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 300); //
-        buttonHint.relocate(MAIN_BOARD_SIZE / 2.0 + 450, MAIN_BOARD_SIZE - 350); //
+        buttonSolver.relocate(MAIN_BOARD_SIZE / 2.0 + 465, MAIN_BOARD_SIZE - 300); //
+        buttonSolver.setStyle("-fx-background-color: orange; -fx-text-fill: white");
+        buttonSolver.setFont(font);
+        buttonHint.relocate(MAIN_BOARD_SIZE / 2.0 + 470, MAIN_BOARD_SIZE - 350); //
+        buttonHint.setStyle("-fx-background-color: orange; -fx-text-fill: white");
+        buttonHint.setFont(font);
 
         buttonSolver.setOnMouseClicked(event -> {
             buttonSolver.setDisable(true);
@@ -108,12 +113,14 @@ public class View extends Application {
         Label labelWonOrLost = new Label(message);
         labelWonOrLost.relocate(25, 20);
         labelWonOrLost.setFont(font);
+        labelWonOrLost.setStyle("-fx-text-fill: dimgrey");
         Label labelAttempts = new Label(String.format("Attempts' count: %d", numOfGuesses));
         labelAttempts.relocate(25, 50);
         labelAttempts.setFont(font);
+        labelAttempts.setStyle("-fx-text-fill: dimgrey");
         root.getChildren().addAll(labelWonOrLost, labelAttempts);
         //root.setPrefSize(50.0, 100.0);
-        root.setStyle("-fx-background-color: wheat");
+        root.setStyle("-fx-background-color: blanchedalmond");
         messageStage.getIcons().add(imageIcon);
         messageStage.setWidth(200);
         messageStage.setHeight(130);
@@ -131,28 +138,33 @@ public class View extends Application {
         appStage.initStyle(StageStyle.UNDECORATED);
         appStage.setTitle("Initialise your board");
         Pane root = new Pane();
-        root.setStyle("-fx-background-color: wheat");
+        root.setStyle("-fx-background-color: blanchedalmond");
         Label text  = new Label("Initialise your board");
         text.setFont(font);
+        text.setStyle("-fx-text-fill: dimgrey");
         text.relocate(120, 100);
         TextField sizeOfField = new TextField(String.format("%d", DEFAULT_BOARD_SIZE));
         sizeOfField.relocate(250, 150);
         sizeOfField.setPrefSize(45, 25);
         sizeOfField.setFont(font);
+        sizeOfField.setStyle("-fx-text-fill: dimgrey");
         Label labelSize = new Label("Size of field:");
         labelSize.setFont(font);
+        labelSize.setStyle("-fx-text-fill: dimgrey");
         labelSize.relocate(85, 150);
         TextField bombsCount = new TextField(String.format("%d", DEFAULT_NUM_OF_BOMBS));
         bombsCount.relocate(250, 200);
         bombsCount.setPrefSize(45, 25);
         bombsCount.setFont(font);
+        bombsCount.setStyle("-fx-text-fill: dimgrey");
         Label labelBombsCount = new Label("Bombs' count:");
         labelBombsCount.setFont(font);
+        labelBombsCount.setStyle("-fx-text-fill: dimgrey");
         labelBombsCount.relocate(85, 200);
         Button buttonOK = new Button("OK");
         buttonOK.relocate(215, 255);
         buttonOK.setFont(font);
-        buttonOK.setStyle("-fx-background-color: orange");
+        buttonOK.setStyle("-fx-text-fill: white; -fx-background-color: orange");
         buttonOK.setOnMouseClicked(event -> {
             if (Pattern.matches(regex, sizeOfField.getText()) && Pattern.matches(regex, bombsCount.getText())) {
                 boardSize = Integer.parseInt(sizeOfField.getText());
@@ -171,7 +183,7 @@ public class View extends Application {
             }
         });
         Button quit = new Button("Quit");
-        quit.setStyle("-fx-background-color: orange");
+        quit.setStyle("-fx-background-color: orange; -fx-text-fill: white");
         quit.relocate(120, 255);
         quit.setFont(font);
         quit.setOnMouseClicked(event -> System.exit(0));
@@ -266,7 +278,7 @@ public class View extends Application {
         });
     }
 
-    public void makeBoom(int x, int y) {
+    public void detonateBomb(int x, int y) {
         getTile(x, y).detonateBomb();
     }
 
@@ -282,6 +294,7 @@ public class View extends Application {
 
         controller = new Controller(this);
         primaryStage.setWidth(1000);
+        primaryStage.setHeight(788);
         primaryStage.setResizable(false);
         primaryStage.centerOnScreen();
         primaryStage.setTitle("Minesweeper");
