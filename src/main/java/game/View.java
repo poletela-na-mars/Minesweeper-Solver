@@ -8,7 +8,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.ImagePattern;
 import javafx.scene.shape.Rectangle;
@@ -16,15 +15,12 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
-import javax.swing.text.Style;
 import java.util.regex.Pattern;
 
 public class View extends Application {
     private Controller controller;
 
     public static final double MAIN_BOARD_SIZE = 750.0;
-
-    //private final boolean botGame = false;
 
     public static final ImagePattern FLAG = new ImagePattern(new Image("flag.png"));
 
@@ -65,10 +61,10 @@ public class View extends Application {
     public void createContent() {
         tileSize = tileSize();
         root.setStyle("-fx-background-color: blanchedalmond");
-        root.setPrefSize(MAIN_BOARD_SIZE, MAIN_BOARD_SIZE + 50);//убрать
-        flag.setWidth(60);//
-        flag.setHeight(60);//
-        flag.relocate(MAIN_BOARD_SIZE + 90, MAIN_BOARD_SIZE - 500);//
+        root.setPrefSize(MAIN_BOARD_SIZE, MAIN_BOARD_SIZE + 50);
+        flag.setWidth(60);
+        flag.setHeight(60);
+        flag.relocate(MAIN_BOARD_SIZE + 90, MAIN_BOARD_SIZE - 500);
         flag.setOnMouseClicked(event -> {
             setFlag = !setFlag;
             if (setFlag) {
@@ -168,13 +164,11 @@ public class View extends Application {
         buttonOK.setOnMouseClicked(event -> {
             if (Pattern.matches(regex, sizeOfField.getText()) && Pattern.matches(regex, bombsCount.getText())) {
                 boardSize = Integer.parseInt(sizeOfField.getText());
-//                textField2.clear();
-//                Double d = (Math.ceil(boardSize * 0.165));
-//                textField2.appendText(d.toString());
                 numOfBombs = Integer.parseInt(bombsCount.getText());
                 if ((boardSize * boardSize <= numOfBombs) || (boardSize > 25) || (boardSize < 2) || (numOfBombs < 1)) {
                     // если ввели бомб больше, чем поле,
-                    // или бомб на все поле, или доска больше 20х20 (для улучшения быстроты отрисовки и отклика),
+                    // или бомб на все поле, или доска больше 25х25 (для улучшения быстроты отрисовки и отклика),
+                    // или доска меньше 2x2, или бомб меньше одной,
                     // то стандартные условия
                     boardSize = DEFAULT_BOARD_SIZE;
                     numOfBombs = DEFAULT_NUM_OF_BOMBS;
@@ -210,12 +204,11 @@ public class View extends Application {
             return new Image("image" + num + ".jpg");
         }
 
-        public static final ImagePattern CLOSED_IMAGE = new ImagePattern(new Image("closed.jpg"));
+        public static final ImagePattern CLOSED_IMAGE = new ImagePattern(new Image("high quality/closed.jpg"));
 
-        public static final Image IMAGE_BOMB = new Image("bomb.png");
+        public static final Image IMAGE_BOMB = new Image("high quality/bomb.png");
 
-        public static final Image IMAGE_BOOM = new Image("bomb_boom.png");
-
+        public static final Image IMAGE_BOOM = new Image("high quality/bomb_boom.png");
 
 
         public void open(int numOfNeighbours) {
@@ -235,11 +228,9 @@ public class View extends Application {
             setFill(CLOSED_IMAGE);
         }
 
-
         public void detonateBomb() {
             setFill(new ImagePattern(IMAGE_BOOM));
         }
-
 
         public void setFlag(boolean hasFlag) {
             if (hasFlag) {
@@ -286,6 +277,9 @@ public class View extends Application {
         buttonSolver.setDisable(true);
 
         Platform.runLater(() -> showMessage(won, numOfGuesses)); // выполнение на UI-потоке
+        // If you need to update a GUI component from a non-GUI thread,
+        // you can use that to put your update in a queue and it will be handled
+        // by the GUI thread as soon as possible.
     }
 
     @Override

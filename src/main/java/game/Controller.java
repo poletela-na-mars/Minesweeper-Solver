@@ -1,13 +1,11 @@
 package game;
 
-
 import javafx.scene.shape.Rectangle;
 import javafx.util.Pair;
 
 import java.util.Random;
 
-
-public class Controller extends Rectangle {
+public class Controller extends Rectangle implements Model.FlagManager {
 
     private Model logicModel;
 
@@ -25,9 +23,21 @@ public class Controller extends Rectangle {
     }
 
     public void onInitialParametersSet(int size, int numOfBombs) {
-        this.logicModel = new Model(size, numOfBombs, this::openTile);  //передадим ссылку на функцию openTile
+        this.logicModel = new Model(size, numOfBombs, this::openTile);  // передадим ссылку на функцию openTile
 
         view.createContent();
+    }
+
+    @Override
+    public void setFlag(int x, int y) {
+        logicModel.getBoard().getCells()[x][y].setFlag(true);
+        view.setFlag(x, y);
+    }
+
+    @Override
+    public void removeFlag(int x, int y) {
+        logicModel.getBoard().getCells()[x][y].setFlag(false);
+        view.removeFlag(x, y);
     }
 
     public void onTileFlagClick(int x, int y) {
@@ -36,12 +46,10 @@ public class Controller extends Rectangle {
         }
         boolean wasFlagged = logicModel.getBoard().getCells()[x][y].hasFlag();
         if (wasFlagged) {
-            view.removeFlag(x, y);
+            removeFlag(x, y);
         } else {
-            view.setFlag(x, y);
+            setFlag(x, y);
         }
-
-        logicModel.getBoard().getCells()[x][y].setFlag(!wasFlagged);
     }
 
     public void onHintAsked() {
@@ -72,7 +80,6 @@ public class Controller extends Rectangle {
                     new Random().nextInt(logicModel.size)
             );
             logicModel.getBoard().set(firstRandomClick.getKey(), firstRandomClick.getValue());
-//            logicModel.getBoard().guess(firstRandomClick.getKey(), firstRandomClick.getValue());
         }
 
         checkFinish();
@@ -81,7 +88,7 @@ public class Controller extends Rectangle {
         }
 
         new Thread(() -> {
-            logicModel.solveWithBot();
+            logicModel.solveWithBot(this);
             botGame = false;
             checkFinish();
         }).start();
@@ -110,6 +117,12 @@ public class Controller extends Rectangle {
             gameEnded = true;
             view.enableHint(false);
 
+            // подождем 3 сек, чтобы визуально запомнить и сравнить поле проигрыша с открытым полностью
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             openAll();
             logicModel.getBoard().printBoardStatus();
 
@@ -126,8 +139,8 @@ public class Controller extends Rectangle {
         }
     }
 
-    private void openTile(Model.Cell cell, boolean asBoom) {
-        if (cell.hasBomb()) {
+    private void openTile(Model.ReadableCell cell, boolean asBoom) {
+        if (cell.isMine()) {
             if (asBoom) {
                 view.detonateBomb(cell.x(), cell.y());
             } else {

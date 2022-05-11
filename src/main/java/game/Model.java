@@ -1,17 +1,16 @@
 package game;
 
 import javafx.util.Pair;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.function.Function;
+import java.util.stream.Collectors;
 
-//Board + Cell + SolverCell + BotGamer + GroupCells (+ interface ReadableCell)
+//Board + Cell + SolverCell + BotGamer + GroupCell (+ interface ReadableCell, OnOpenCellListener, FlagManager)
 public class Model {
 
     private final Board board;
 
-    private Model.BotGamer bot;
+    private BotGamer bot;
 
     public final int size;
     public final int numOfBombs;
@@ -26,8 +25,8 @@ public class Model {
         return this.board;
     }
 
-    public void solveWithBot() {
-        this.bot = new BotGamer(board);
+    public void solveWithBot(FlagManager flagManager) {
+        this.bot = new BotGamer(board, flagManager);
         bot.play();
     }
 
@@ -46,7 +45,7 @@ public class Model {
 
         private final int numOfBombs;
 
-        private final OnOpenCellListener onOpenCellListener;
+        private OnOpenCellListener onOpenCellListener;
 
         private int numOfGuesses = 0;
 
@@ -95,6 +94,7 @@ public class Model {
         }
 
         public void guess(int x, int y) {
+            long start = System.currentTimeMillis();
             numOfGuesses++;
             System.out.printf("Open %d,%d%n", x, y);
 
@@ -103,6 +103,7 @@ public class Model {
                 cells[x][y].open();
                 onOpenCellListener.onOpenCell(cells[x][y], true);   //interface -> controller -> view
                 lostTheGame = true;
+                System.out.println("guess: " + (System.currentTimeMillis() - start));
                 return;
             }
             //Открыть все не соседние с бомбами клетки
@@ -110,6 +111,7 @@ public class Model {
 
             checkIfWon();
             printBoardStatus();
+            System.out.println("guess: " + (System.currentTimeMillis() - start));
         }
 
         private void openAllNulls(Cell cell) {
@@ -168,7 +170,7 @@ public class Model {
             }
         }
 
-        public Cell[][] getCells() {
+        Cell[][] getCells() {
             return cells;
         }
 
@@ -187,19 +189,19 @@ public class Model {
         ReadableCell[][] getReadableCells() {
             return cells;
         }
-
-        /*public int getNumOfGuesses() {
-            return numOfGuesses;
-        }*/
     }
 
     public interface ReadableCell {
-        //boolean hasBomb();
         int getNeighbourBombs();
+
         boolean isOpen();
+
         boolean hasFlag();
 
+        boolean isMine() throws IllegalStateException;
+
         int x();
+
         int y();
     }
 
@@ -226,6 +228,12 @@ public class Model {
         }
 
         public boolean hasBomb() {
+            return hasBomb;
+        }
+
+        @Override
+        public boolean isMine() throws IllegalStateException {
+            if (!isOpen) throw new IllegalStateException("Cell is closed!");
             return hasBomb;
         }
 
@@ -267,6 +275,24 @@ public class Model {
         public int y() {
             return y;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            Cell cell = (Cell) o;
+
+            if (x != cell.x) return false;
+            return y == cell.y;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = x;
+            result = 31 * result + y;
+            return result;
+        }
     }
 
     static class SolverCell implements ReadableCell {
@@ -277,26 +303,19 @@ public class Model {
             delegate = cell;
         }
 
-        private boolean isPossibleBomb;
+        private boolean sureBomb = false;
+        private boolean sureNotBomb = false;
 
-        public void markAsPossibleBomb(boolean isBomb) {
-            isPossibleBomb = isBomb;
+        @Override
+        public boolean isMine() throws IllegalStateException {
+            return delegate.isMine();
         }
 
-        private boolean isMaybeBomb;
+        private double mineProbability;
 
-        public void markAsMaybeBomb(boolean isBomb) {
-            isMaybeBomb = isBomb;
+        public void correctProbabilityOnValue(double value) {
+            mineProbability *= value;
         }
-
-        /*public boolean isPossibleBomb() {
-            return isPossibleBomb;
-        }*/
-
-        /*@Override
-        public boolean hasBomb() {
-            return delegate.hasBomb();
-        }*/
 
         @Override
         public int getNeighbourBombs() {
@@ -322,25 +341,58 @@ public class Model {
         public int y() {
             return delegate.y();
         }
+
+        public double getMineProbability() {
+            if (sureBomb) return 1;
+            if (sureNotBomb) return 0;
+
+            return mineProbability;
+        }
+
+        void setMineProbability(double prob) {
+            this.mineProbability = prob;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            SolverCell that = (SolverCell) o;
+
+            return x() == that.x() && y() == that.y();
+        }
+
+        @Override
+        public int hashCode() {
+            int result = x();
+            result = 31 * result + y();
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "Cell(x=" + x() + ", y=" + y() + ", open=" + isOpen() + " " + (isOpen() ? getMineProbability() : "") + ")";
+        }
     }
 
-    static class BotGamer {
-        //private Pair<Integer, Integer> lastGuess;
-
+    static class BotGamer implements OnOpenCellListener, FlagManager {
         private final Board board;
 
         private int detectedBombs;
 
-        List<Pair<Integer, Integer>> coordinates;
+        private final Set<GroupCell> solverGroups = new HashSet<>();
 
-        Set<GroupCells> groups;
+        protected final SolverCell[][] cells;
 
-        private final SolverCell[][] cells;
+        private final OnOpenCellListener originalOnOpenCellListener;
+        private final FlagManager flagManager;
 
-
-        public BotGamer(Board board) {
+        public BotGamer(Board board, FlagManager flagManager) {
             this.board = board;
-            coordinates = new ArrayList<>();
+            originalOnOpenCellListener = board.onOpenCellListener;
+            this.flagManager = flagManager;
+            board.onOpenCellListener = this;
 
             ReadableCell[][] readableCells = board.getReadableCells();
             cells = new SolverCell[readableCells.length][readableCells[0].length];
@@ -349,310 +401,324 @@ public class Model {
                     cells[i][j] = new SolverCell(readableCells[i][j]);
                 }
             }
+        }
+
+        /**
+         * without flag!
+         */
+        private List<SolverCell> getExcludedFromGroupsClosedCells() {
+            List<SolverCell> excluded = new ArrayList<>();
 
             for (int i = 0; i < board.size; i++) {
                 for (int j = 0; j < board.size; j++) {
-                    coordinates.add(new Pair<>(i, j));
+                    if (!cells[i][j].isOpen() && getGroups(cells[i][j].x(), cells[i][j].y()).isEmpty() && !cells[i][j].hasFlag()) {
+                        excluded.add(cells[i][j]);
+                    }
                 }
             }
+            return excluded;
         }
 
-        void makeGroups() {
-            groups = new HashSet<>();
-            Set<Pair<Integer, Integer>> guaranteedBombs = new HashSet<>();
+        private List<SolverCell> getNumeratedCells() {
+            List<SolverCell> numeratedCells = new ArrayList<>();
+
             for (int i = 0; i < board.size; i++) {
                 for (int j = 0; j < board.size; j++) {
-                    SolverCell cell = cells[i][j];
-                    if (cell.isOpen() && cell.getNeighbourBombs() > 0) {   //если клетка с цифрой, не пустая
-                        Set<Pair<Integer, Integer>> coordinates = new HashSet<>();
-                        for (int x = Integer.max(i - 1, 0); x < Integer.min(i + 2, board.size); x++) {
-                            for (int y = Integer.max(j - 1, 0); y < Integer.min(j + 2, board.size); y++) {
-                                if (!cells[x][y].isOpen()) {
-                                    coordinates.add(new Pair<>(x, y));
-                                    continue;
-                                }
-                                if (cells[x][y].isPossibleBomb) {
-                                    Pair<Integer, Integer> pair = new Pair<>(x, y);
-                                    coordinates.add(pair);
-                                    guaranteedBombs.add(pair);
-                                }
-                            }
-                        }
-                        groups.add(new GroupCells(coordinates, cell.getNeighbourBombs()));
+                    if (cells[i][j].isOpen() && cells[i][j].getNeighbourBombs() > 0) {
+                        numeratedCells.add(cells[i][j]);
                     }
                 }
             }
-            groups.add(new GroupCells(guaranteedBombs, guaranteedBombs.size()));
-            Set<GroupCells> groupsToAdd = new HashSet<>();
-            Set<GroupCells> lastGroups = new HashSet<>();
-            GroupCells emptyGroup = new GroupCells(new HashSet<>(), 0);
-            boolean noChanges = false;
-            while (!noChanges) {
-                groups.remove(emptyGroup);
-                lastGroups.clear();
-                lastGroups.addAll(groups);
-                groups.clear();
-                for (GroupCells group : lastGroups) {
-                    groups.addAll(group.split()); //разбивка по группам по количеству бомб в группе
-                }
-                for (GroupCells group1 : groups) {
-                    for (GroupCells group2 : groups) {
-                        groupsToAdd.add(group1.mergeOther(group2)); //делаем группы не пересекающимися
-                    }
-                }
-                groups.addAll(groupsToAdd);
-                groupsToAdd.clear();
-                noChanges = true;
-                for (GroupCells group : groups) {
-                    noChanges = noChanges && lastGroups.contains(group);
-                }
-            }
+
+            return numeratedCells;
         }
 
-        //true - когда можно открывать группу ("чистая")
-        boolean setGuaranteed() {
-            boolean res = false;
-            for (GroupCells group : groups) {
-                if (group.getBombsCount() == 0 && group.getGroup().size() != 0) {
-                    for (Pair<Integer, Integer> pair : group.getGroup()) {
-                        board.guess(pair.getKey(), pair.getValue());
-                        if (board.gameFinished()) {
-                            return true;
-                        }
-                        // analogue is upper
-//                        if (guess(pair.getKey(), pair.getValue())) {
-//                            return true;
-//                        }
-                    }
-                    res = true;
-                }
-                if (group.getBombsCount() == group.getGroup().size()) {
-                    for (Pair<Integer, Integer> pair : group.getGroup()) {
-                        int x = pair.getKey();
-                        int y = pair.getValue();
-                        if (!cells[x][y].isOpen() && !cells[x][y].isPossibleBomb) {
-                            detectedBombs++;
-                            cells[x][y].markAsPossibleBomb(true);
-                        }
-                    }
+        private List<SolverCell> getAllNeighbours(ReadableCell cell) {
+            List<SolverCell> neighbours = new ArrayList<>();
+
+            for (int x = Integer.max(cell.x() - 1, 0); x < Integer.min(cell.x() + 2, board.size); x++) {
+                for (int y = Integer.max(cell.y() - 1, 0); y < Integer.min(cell.y() + 2, board.size); y++) {
+                    neighbours.add(cells[x][y]);
                 }
             }
-            return res;
+
+            return neighbours;
         }
 
-        //Когда совпадет число в ячейке с количеством бомб вокруг
-        private boolean checkingIfPossibleComb(int[] bombsPlacing, int[] bombsCountInAllCases) {
-            for (int i : bombsPlacing) {
-                int x = coordinates.get(i).getKey();
-                int y = coordinates.get(i).getValue();
-                cells[x][y].markAsPossibleBomb(true);
+        // first (bigger) contains second (smaller)
+        Pair<GroupCell, GroupCell> getFirstContainsGroupOrNull() {
+            GroupCell[] groupAsArray = solverGroups.toArray(new GroupCell[0]);
+            for (int i = 0; i < groupAsArray.length; i++) {
+                for (int j = i + 1; j < groupAsArray.length; j++) {
+                    if (groupAsArray[i].contains(groupAsArray[j])) {
+                        // если две группы имеют одни и те же клетки, но разное число мин
+                        // и возвращаем группу с большим числом мин как бОльшую группу
+                        if (groupAsArray[i].cells.size() == groupAsArray[j].cells.size()) {
+                            return groupAsArray[i].minesCount > groupAsArray[j].minesCount ? new Pair<>(groupAsArray[i], groupAsArray[j]) : new Pair<>(groupAsArray[j], groupAsArray[i]);
+                        }
+                        return new Pair<>(groupAsArray[i], groupAsArray[j]);
+                    }
+                    if (groupAsArray[j].contains(groupAsArray[i]))
+                        return new Pair<>(groupAsArray[j], groupAsArray[i]);
+                }
             }
-            boolean rightComb = true;
-            loop:
+            return null;
+        }
+
+        /**
+         * Возвращает все группы, в которые входит cell
+         */
+//        Set<GroupCell> getGroups(ReadableCell cell) {
+//            //return solverGroups.stream().filter(group -> group.cells.contains(cell)).collect(Collectors.toSet());
+//            return solverGroups.stream().filter(group -> group.cells.stream().anyMatch(it -> it.delegate.equals(cell))).collect(Collectors.toSet());
+//        }
+
+        Set<GroupCell> getGroups(int x, int y) {
+            return solverGroups.stream().filter(group -> group.cells.contains(cells[x][y])).collect(Collectors.toSet());
+        }
+
+        void restructureGroups() {
+            Pair<GroupCell, GroupCell> containsGroups = getFirstContainsGroupOrNull();
+
+            while (containsGroups != null) {
+
+                GroupCell bigger = containsGroups.getKey();
+                GroupCell smaller = containsGroups.getValue();
+
+                // remove from set to avoid mutations in hashset (will be restored at bottom)
+                solverGroups.remove(bigger);
+                solverGroups.remove(smaller);
+
+                bigger.cells.removeAll(smaller.cells);
+                bigger.minesCount -= smaller.minesCount;
+
+                solverGroups.add(bigger);
+                if (!smaller.cells.isEmpty())
+                    solverGroups.add(smaller);
+
+                containsGroups = getFirstContainsGroupOrNull();
+            }
+
+        }
+
+        private void makeGroups() {
+            for (SolverCell numeratedCell : getNumeratedCells()) {
+                addGroup(numeratedCell);
+            }
+            restructureGroups();
+        }
+
+        private void printProbabilitiesTable() {
             for (int i = 0; i < board.size; i++) {
                 for (int j = 0; j < board.size; j++) {
-                    if (cells[i][j].isOpen() && !cells[i][j].isPossibleBomb) { //если открыта и не бомба
-                        int bombsCount = 0;
-                        for (int x = Integer.max(i - 1, 0); x < Integer.min(i + 2, board.size); x++) {
-                            for (int y = Integer.max(j - 1, 0); y < Integer.min(j + 2, board.size); y++) {
-                                if (cells[x][y].isOpen() && cells[x][y].isPossibleBomb) {
-                                    bombsCount++;
-                                }
-                            }
-                        }
-                        if (bombsCount != cells[i][j].getNeighbourBombs()) {
-                            rightComb = false;
-                            break loop;
-                        }
-                    }
+                    System.out.printf("%+.2f  ", cells[j][i].isOpen() ? -1 : (cells[j][i].sureBomb ? 9 : cells[j][i].getMineProbability()));
                 }
+                System.out.println();
             }
-            for (int i : bombsPlacing) {
-                int x = coordinates.get(i).getKey();
-                int y = coordinates.get(i).getValue();
-                cells[x][y].markAsPossibleBomb(false);
-                if (rightComb) {
-                    bombsCountInAllCases[i]++;
-                }
-            }
-            return rightComb;
-        }
-
-        boolean enumerationOfCombs() {
-            int closedBombs = board.numOfBombs - detectedBombs;
-            if (closedBombs == 0) {
-                for (Pair<Integer, Integer> coord : coordinates) {
-                    board.guess(coord.getKey(), coord.getValue());
-                }
-                return true;
-            }
-            int closedCells = coordinates.size();
-
-            // Для быстродействия, поскольку при нескольких известных ячейках, солвер очень долго думает
-            // Если примерно половина открыта, то воспользуемся enumerationOfCombs, если нет, то рандомные клики по null в play
-            if (closedCells > ((board.size * board.size) * 0.6)) {
-                return false;
-            }
-
-            int combsCount = 0;
-            int[] bombsPlacing = new int[closedBombs];
-            int[] bombInCellCases = new int[closedCells];
-            for (int i = 0; i < closedBombs; i++) {
-                bombsPlacing[i] = i;
-            }
-            while (true) {
-                if (checkingIfPossibleComb(bombsPlacing, bombInCellCases)) {
-                    combsCount++;
-                }
-                if (bombsPlacing[0] == closedCells - closedBombs) {
-                    break;
-                }
-                for (int i = 0; i < closedBombs; i++) {
-                    if (i != closedBombs - 1) {
-                        if ((bombsPlacing[i] == closedCells - closedBombs + i)) throw new AssertionError();
-                        if (bombsPlacing[i + 1] == closedCells - closedBombs + i + 1) {
-                            bombsPlacing[i]++;
-                            for (int j = i + 1; j < closedBombs; j++) {
-                                bombsPlacing[j] = bombsPlacing[j - 1] + 1;
-                            }
-                            break;
-                        }
-                    } else {
-                        if ((bombsPlacing[i] >= closedCells - 1)) throw new AssertionError();
-                        bombsPlacing[i]++;
-                    }
-                }
-            }
-            boolean res = false;
-            for (int i = 0; i < closedCells; i++) {
-                int x = coordinates.get(i).getKey();
-                int y = coordinates.get(i).getValue();
-                if (bombInCellCases[i] == combsCount) {
-                    detectedBombs++;
-                    cells[x][y].markAsPossibleBomb(true);
-                }
-                if (bombInCellCases[i] > 0) {
-                    cells[x][y].markAsMaybeBomb(true);
-                }
-                if (bombInCellCases[i] == 0) {
-                    res = true;
-
-                    board.guess(x, y);
-
-                    if (board.gameFinished()) {
-                        return true;
-                    }
-                }
-            }
-                return res;
         }
 
         public void play() {
-            while (!board.gameFinished()) {
-                coordinates.removeIf(coord -> cells[coord.getKey()][coord.getValue()].isOpen());
-                makeGroups();
-                if (!setGuaranteed()) {
-                    coordinates.removeIf(coord -> cells[coord.getKey()][coord.getValue()].isOpen());
-                    if (enumerationOfCombs()) {
-                        continue;
-                    }
-                    coordinates.removeIf(coord -> cells[coord.getKey()][coord.getValue()].isOpen());
-                    if (coordinates.size() == 0) {
-                        continue;
-                    }
+            makeGroups();
 
-                    int index = (int) (Math.random() * coordinates.size());
-                    Pair<Integer, Integer> pair = coordinates.get(index);
-                    int count = 0;
-                    for (SolverCell[] cell : cells) {
-                        for (SolverCell c : cell) {
-                            if (c.isMaybeBomb) count++;
+            do {
+                restructureGroups();
+                evaluateClearGroupsProbabilities();
+
+                for (SolverCell[] cellsRow : cells) {
+                    for (SolverCell cell : cellsRow) {
+                        if (!cell.sureBomb && !cell.sureNotBomb && !getGroups(cell.x(), cell.y()).isEmpty()) {
+                            evaluateCellsProbabilities(cell);
                         }
                     }
-                    if (count != coordinates.size()) {
-                        while (cells[pair.getKey()][pair.getValue()].isMaybeBomb) {
-                            index = (int) (Math.random() * coordinates.size());
-                            pair = coordinates.get(index);
-                        }
+                }
+
+                for (int i = 0; i < 100; i++) {
+                    solverGroups.forEach(GroupCell::correctProbabilityOnMinesCount);
+                }
+
+                List<SolverCell> closedExcluded = getExcludedFromGroupsClosedCells();
+                closedExcluded.forEach(it -> it.setMineProbability(((double) board.numOfBombs - detectedBombs) / closedExcluded.size()));
+
+                SolverCell safest = getSafestCell();
+
+                printProbabilitiesTable();
+                board.guess(safest.x(), safest.y());
+
+            } while (!board.gameFinished());
+        }
+
+        private SolverCell getSafestCell() {
+            SolverCell minProbCell = null;
+
+            loop:
+            for (SolverCell[] cellsRow : cells) {
+                for (SolverCell cell : cellsRow) {
+                    if (!cell.isOpen()) {
+                        minProbCell = cell;
+                        break loop;
                     }
-                    board.guess(pair.getKey(), pair.getValue());
                 }
             }
+            assert minProbCell != null;
+
+            for (SolverCell[] cellsRow : cells) {
+                for (SolverCell cell : cellsRow) {
+                    if (!cell.isOpen()) {
+                        if (cell.getMineProbability() < minProbCell.getMineProbability()) minProbCell = cell;
+                    }
+                }
+            }
+            return minProbCell;
+        }
+
+        @Override
+        public void onOpenCell(ReadableCell rc, boolean asBoomCell) {
+            SolverCell cell = cells[rc.x()][rc.y()];
+
+            removeCellFromGroups(cell);
+
+            if (cell.getNeighbourBombs() > 0) {
+                addGroup(cell);
+            }
+
+            originalOnOpenCellListener.onOpenCell(cell, asBoomCell);
+        }
+
+        void evaluateClearGroupsProbabilities() {
+            solverGroups.forEach(group -> {
+                if (group.minesCount == 0) {
+                    group.cells.forEach(cell -> cell.sureNotBomb = true);
+                } else if (group.minesCount == group.cells.size() || group.cells.size() == group.minesCount - group.cells.stream().filter(it -> it.sureBomb).count()) {
+                    group.cells.forEach(cell -> {
+                        if (!cell.sureBomb) {
+                            cell.sureBomb = true;
+                            this.setFlag(cell.x(), cell.y());
+                        }
+                    });
+                }
+            });
+        }
+
+        private void evaluateCellsProbabilities(SolverCell cell) {
+            Set<GroupCell> cellGroups = getGroups(cell.x(), cell.y());
+
+            double mulProb = cellGroups.stream().mapToDouble(group -> 1 - (double) group.minesCount / group.cells.size()).reduce(1, (a, b) -> a * b);
+
+            cell.setMineProbability(1 - mulProb);
+        }
+
+        void addGroup(ReadableCell cell) {
+            List<SolverCell> closedNeighbours = getAllNeighbours(cell).stream().filter(it -> !it.isOpen()).collect(Collectors.toList());
+            if (closedNeighbours.isEmpty()) return;
+
+            GroupCell group = new GroupCell(closedNeighbours, cell.getNeighbourBombs());
+            solverGroups.add(group);
+        }
+
+        private void removeCellFromGroups(SolverCell cell) {
+
+            Set<GroupCell> cellGroups = new HashSet<>(getGroups(cell.x(), cell.y()));
+
+            if (cellGroups.isEmpty()) return;
+
+            // update solverGroups set to avoid mutations in hashset
+            solverGroups.removeAll(getGroups(cell.x(), cell.y()));
+
+            cellGroups.forEach(it -> it.removeCell(cell));
+
+            solverGroups.addAll(cellGroups.stream().filter(it -> !it.cells.isEmpty()).collect(Collectors.toList()));
+        }
+
+        @Override
+        public void setFlag(int x, int y) {
+            detectedBombs++;
+            flagManager.setFlag(x, y);
+        }
+
+        /**
+         * Not used
+         */
+        @Override
+        public void removeFlag(int x, int y) {
+            flagManager.removeFlag(x, y);
         }
     }
 
-    static class GroupCells {
-        private final Set<Pair<Integer, Integer>> group;
+    static class GroupCell {
+        int minesCount;
 
-        private int bombsCount;
+        protected Set<SolverCell> cells;
 
-        public GroupCells(Set<Pair<Integer, Integer>> group, int bombsCount) {
-            this.group = group;
-            this.bombsCount = bombsCount;
+        GroupCell(Collection<SolverCell> cells, int bombs) {
+            this.minesCount = bombs;
+            this.cells = new HashSet<>(cells);
         }
 
-        public GroupCells mergeOther(@NotNull GroupCells other) {
-            if (this.equals(other))
-                return this;
-            Set<Pair<Integer, Integer>> newGroup = new HashSet<>(group);
-            newGroup.retainAll(other.group); //то, что не содержится в other.group, удалить в newGroup (ТО, ЧТО ЕСТЬ И В GROUP, И В OTHER.GROUP)
-            if (newGroup.isEmpty())
-                return this;
-            //Делаем группы не пересекающимися
-            if (group.equals(newGroup)) {
-                other.bombsCount = other.bombsCount - bombsCount;
-                other.group.removeAll(newGroup); //удалить в other.group то, что есть в newGroup
-                return other;
-            }
-            if (other.group.equals(newGroup)) {
-                bombsCount = bombsCount - other.bombsCount;
-                group.removeAll(newGroup);
-                return this;
-            }
-            return this;
+        public Set<SolverCell> getCells() {
+            return cells;
         }
 
-        public Set<GroupCells> split() {
-            Set<GroupCells> res = new HashSet<>();
-            int bomb = bombsCount == group.size() ? 1 : bombsCount == 0 ? 0 : -1;
-            if (bomb >= 0) {
-                for (Pair<Integer, Integer> coords : group) {
-                    Set<Pair<Integer, Integer>> set = new HashSet<>();
-                    set.add(coords);
-                    res.add(new GroupCells(set, bomb));
-                }
-            } else {
-                res.add(this);
-            }
-            return res;
+        public void removeCell(SolverCell cell) {
+            this.cells.remove(cell);
         }
 
-        public Set<Pair<Integer, Integer>> getGroup() {
-            return group;
+        public boolean contains(GroupCell other) {
+            return this.cells.containsAll(other.cells);
         }
 
-        public int getBombsCount() {
-            return bombsCount;
+        /*public Set<SolverCell> intersectWith(GroupCell other) {
+            Set<SolverCell> intersections = new HashSet<>(this.cells);
+            intersections.retainAll(other.cells);
+
+            return intersections;
+        }
+
+        public boolean intersects(GroupCell other) {
+            return !intersectWith(other).isEmpty();
+        }*/
+
+        public void correctProbabilityOnMinesCount() {
+            if (this.minesCount == 0) return;
+
+            double correction = (double) this.minesCount / (cells.stream().mapToDouble(SolverCell::getMineProbability).sum());
+
+            cells.forEach(it -> {
+                if (!it.sureBomb && !it.sureNotBomb) it.correctProbabilityOnValue(correction);
+            });
+        }
+
+        @Override
+        public String toString() {
+            return "Group(cells=" + cells + ", bombs=" + this.minesCount + ")";
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            GroupCells that = (GroupCells) o;
-            return bombsCount == that.bombsCount &&
-                    Objects.equals(group, that.group);
+
+            GroupCell that = (GroupCell) o;
+
+            if (minesCount != that.minesCount) return false;
+            return cells.equals(that.cells);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(group, bombsCount);
+            int result = minesCount;
+            result = 31 * result + cells.hashCode();
+            return result;
         }
     }
 
     @FunctionalInterface
     public interface OnOpenCellListener {
-        void onOpenCell(Cell cell, boolean asBoomCell); //в controller openTile()
+        void onOpenCell(ReadableCell cell, boolean asBoomCell); // в controller openTile()
+    }
+
+    public interface FlagManager {
+        void setFlag(int x, int y);
+        void removeFlag(int x, int y);
     }
 }
 
