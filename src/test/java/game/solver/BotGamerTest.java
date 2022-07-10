@@ -1,5 +1,7 @@
-package game;
+package game.solver;
 
+import game.Model;
+import game.TestBoard;
 import javafx.util.Pair;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -33,7 +35,7 @@ public class BotGamerTest {
                     new Random().nextInt(model.size),
                     new Random().nextInt(model.size)
             );
-            model.getBoard().set(firstRandomClick.getKey(), firstRandomClick.getValue());
+            model.getBoard().initField(firstRandomClick.getKey(), firstRandomClick.getValue());
 
             model.solveWithBot(emptyFlagManager);
 
@@ -52,75 +54,71 @@ public class BotGamerTest {
 
     @Test
     public void addGroupAndGetGroupsTest() {
-        Model.Board board = new Model.Board(2, 2, (cell, asBoomCell) -> {
-        });
-        Model.BotGamer botGamer = new Model.BotGamer(board, emptyFlagManager);
+        TestBoard board = new TestBoard(2, 2);
+        BotGamer botGamer = new BotGamer(board, emptyFlagManager);
 
         // OPENED  CLOSED
         // CLOSED  CLOSED
 
-        board.getCells()[0][0].open();
-//        board.getCells()[0][1].setBomb(true);
-//        board.getCells()[1][0].setBomb(true);
+        board.openCell(0, 0);
 
-        botGamer.addGroup(board.getCells()[0][0]);
+        botGamer.addGroup(board.getCell(0, 0));
 
         // 0,0 ни в какой группе не состоит
-        Assertions.assertTrue(botGamer.getGroups(board.getCells()[0][0].x(), board.getCells()[0][0].y()).isEmpty());
+        Assertions.assertTrue(botGamer.getGroups(board.getCell(0, 0).x, board.getCell(0, 0).y).isEmpty());
         // 0,1 состоит в одной группе (от 0,0)
-        Assertions.assertEquals(1, botGamer.getGroups(board.getCells()[0][1].x(), board.getCells()[0][1].y()).size());
+        Assertions.assertEquals(1, botGamer.getGroups(board.getCell(0, 1).x, board.getCell(0, 1).y).size());
         // в группе 0,0 есть три cells
-        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCells()[0][1].x(), board.getCells()[0][1].y())).get(0).getCells().size());
+        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCell(0, 1).x, board.getCell(0, 1).y)).get(0).getCells().size());
 
         // 1,0 состоит в одной группе (от 0,0)
-        Assertions.assertEquals(1, botGamer.getGroups(board.getCells()[1][0].x(), board.getCells()[1][0].y()).size());
-        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCells()[1][0].x(), board.getCells()[1][0].y())).get(0).getCells().size());
+        Assertions.assertEquals(1, botGamer.getGroups(board.getCell(1, 0).x, board.getCell(1, 0).y).size());
+        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCell(1, 0).x, board.getCell(1, 0).y)).get(0).getCells().size());
 
         // 1,1 состоит в одной группе (от 0,0)
-        Assertions.assertEquals(1, botGamer.getGroups(board.getCells()[1][1].x(), board.getCells()[1][1].y()).size());
-        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCells()[1][1].x(), board.getCells()[1][1].y())).get(0).getCells().size());
+        Assertions.assertEquals(1, botGamer.getGroups(board.getCell(1, 1).x, board.getCell(1, 1).y).size());
+        Assertions.assertEquals(3, new ArrayList<>(botGamer.getGroups(board.getCell(1,1).x, board.getCell(1, 1).y)).get(0).getCells().size());
     }
 
     @Test
     public void getFirstContainsGroupOrNullAndRestructureGroupsTest() {
-        Model.Board board = new Model.Board(3, 2, (cell, asBoomCell) -> {
-        });
-        Model.BotGamer botGamer = new Model.BotGamer(board, emptyFlagManager);
+        TestBoard board = new TestBoard(3, 2);
+        BotGamer botGamer = new BotGamer(board, emptyFlagManager);
 
-        //  !2   *(B)   *
-        //   2   *(B)   2
-        //   *     1   !1
+        // !2  2  *
+        //  *  *  1
+        //  *  2 !1
 
-        // ! - создали группы имнно для этих ячеек, для наглядности работы алгоритма
+        // ! - создали группы именно для этих ячеек, для наглядности работы алгоритма
         // В группе от 0,0 содержится две ячейки, а в группе от 2,2 - 1. Однако группа от 0,0 содержит в себе группу от 2,2.
         // Поэтому метод вернет пару от GroupCell, где первый элемент пары - больший GroupCell (где больше Set от cells).
 
-        board.getCells()[0][0].neighbourBombs = 2;
-        board.getCells()[0][0].open();
-        board.getCells()[1][0].neighbourBombs = 2;
-        board.getCells()[1][0].open();
+        board.setNeighbourBombs(0, 0, 2);
+        board.openCell(0, 0);
+        board.setNeighbourBombs(1, 0, 2);
+        board.openCell(1, 0);
 
-        board.getCells()[2][2].neighbourBombs = 1;
-        board.getCells()[2][2].open();
-        board.getCells()[2][1].neighbourBombs = 1;
-        board.getCells()[2][1].open();
-        board.getCells()[1][2].neighbourBombs = 2;
-        board.getCells()[1][2].open();
+        board.setNeighbourBombs(2, 2, 1);
+        board.openCell(2, 2);
+        board.setNeighbourBombs(2, 1, 1);
+        board.openCell(2, 1);
+        board.setNeighbourBombs(1, 2, 2);
+        board.openCell(1, 2);
 
-        botGamer.addGroup(board.getCells()[0][0]);
-        botGamer.addGroup(board.getCells()[2][2]);
+        botGamer.addGroup(board.getCell(0, 0));
+        botGamer.addGroup(board.getCell(2, 2));
 
-        Set<Model.GroupCell> theorySet = botGamer.getGroups(1, 1);
+        Set<GroupCell> theorySet = botGamer.getGroups(1, 1);
 
-        Model.GroupCell max = theorySet.stream().findFirst().get();
+        GroupCell max = theorySet.stream().findFirst().get();
         int maxSize = max.cells.size();
-        Model.GroupCell maxGroupCell = theorySet.stream().filter(it -> it.cells.size() >= maxSize).findFirst().get();
+        GroupCell maxGroupCell = theorySet.stream().filter(it -> it.cells.size() >= maxSize).findFirst().get();
         theorySet.remove(maxGroupCell);
 
-        Model.GroupCell secondGroupCell = theorySet.stream().findFirst().get();
+        GroupCell secondGroupCell = theorySet.stream().findFirst().get();
 
-        Pair<Model.GroupCell, Model.GroupCell> theoryPair = new Pair(maxGroupCell, secondGroupCell);
-        Pair<Model.GroupCell, Model.GroupCell> result = botGamer.getFirstContainsGroupOrNull();
+        Pair<GroupCell, GroupCell> theoryPair = new Pair(maxGroupCell, secondGroupCell);
+        Pair<GroupCell, GroupCell> result = botGamer.getFirstContainsGroupOrNull();
         Assertions.assertEquals(theoryPair, result);
         Assertions.assertTrue(maxGroupCell.contains(secondGroupCell));
 
@@ -137,40 +135,35 @@ public class BotGamerTest {
 
     @Test
     public void evaluateTest() {
-        Model.Board board = new Model.Board(3, 3, (cell, asBoomCell) -> {
-        });
-        Model.BotGamer botGamer = new Model.BotGamer(board, emptyFlagManager);
+        TestBoard board = new TestBoard(3, 3);
+        BotGamer botGamer = new BotGamer(board, emptyFlagManager);
 
-        //  0    1    *
-        //  1    3    2
-        //  *    *    *
+        //   0   1  (B)
+        //   1   3   *
+        //  (B)  2  (B)
 
         // Тест на однозначность нахождения бомб
 
-        //  0     1     *
-        //  1     3     2
-        //  *    !0     *
+        board.setNeighbourBombs(1, 1, 3);
+        board.openCell(1, 1);
+        board.setNeighbourBombs(1, 2, 2);
+        board.openCell(1, 2);
+        board.setNeighbourBombs(1, 0, 1);
+        board.openCell(1, 0);
+        board.setNeighbourBombs(0, 1, 1);
+        board.openCell(0, 1);
+        board.setNeighbourBombs(0, 0, 0);
+        board.openCell(0, 0);
 
-        board.getCells()[1][1].neighbourBombs = 3;
-        board.getCells()[1][1].open();
-        board.getCells()[1][2].neighbourBombs = 2;
-        board.getCells()[1][2].open();
-        board.getCells()[1][0].neighbourBombs = 1;
-        board.getCells()[1][0].open();
-        board.getCells()[0][1].neighbourBombs = 1;
-        board.getCells()[0][1].open();
-        board.getCells()[0][0].neighbourBombs = 0;
-        board.getCells()[0][0].open();
+        board.getCell(0, 2).setBomb(true);
+        board.getCell(2, 0).setBomb(true);
+        board.getCell(2, 2).setBomb(true);
 
-        board.getCells()[0][2].setBomb(true);
-        board.getCells()[2][0].setBomb(true);
-        board.getCells()[2][2].setBomb(true);
-
-        botGamer.addGroup(board.getCells()[1][1]);
-        botGamer.addGroup(board.getCells()[0][0]);
-        botGamer.addGroup(board.getCells()[0][1]);
-        botGamer.addGroup(board.getCells()[1][0]);
-        botGamer.addGroup(board.getCells()[1][2]);
+        botGamer.addGroup(board.getCell(1, 1));
+        botGamer.addGroup(board.getCell(0, 0));
+        botGamer.addGroup(board.getCell(0, 1));
+        botGamer.addGroup(board.getCell(1, 0));
+        botGamer.addGroup(board.getCell(1, 2));
 
         botGamer.restructureGroups();
         botGamer.evaluateClearGroupsProbabilities();
@@ -194,7 +187,7 @@ public class BotGamerTest {
                     new Random().nextInt(model.size),
                     new Random().nextInt(model.size)
             );
-            model.getBoard().set(firstRandomClick.getKey(), firstRandomClick.getValue());
+            model.getBoard().initField(firstRandomClick.getKey(), firstRandomClick.getValue());
 
             model.solveWithBot(emptyFlagManager);
 

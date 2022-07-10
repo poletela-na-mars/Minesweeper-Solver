@@ -30,13 +30,13 @@ public class Controller extends Rectangle implements Model.FlagManager {
 
     @Override
     public void setFlag(int x, int y) {
-        logicModel.getBoard().getCells()[x][y].setFlag(true);
+        logicModel.getBoard().setFlag(x, y);
         view.setFlag(x, y);
     }
 
     @Override
     public void removeFlag(int x, int y) {
-        logicModel.getBoard().getCells()[x][y].setFlag(false);
+        logicModel.getBoard().removeFlag(x, y);
         view.removeFlag(x, y);
     }
 
@@ -57,14 +57,13 @@ public class Controller extends Rectangle implements Model.FlagManager {
             return;
         }
 
-        label:
         for (int i = 0; i < logicModel.size; i++) {
             for (int j = 0; j < logicModel.size; j++) {
                 Model.Cell cell = logicModel.getBoard().getCells()[i][j];
-                if (cell.hasBomb() && !cell.hasFlag()) {
-                    cell.setFlag(true);
+                if (cell.isMine() && !cell.hasFlag()) {
+                    logicModel.getBoard().setFlag(i, j);
                     view.setFlag(i, j);
-                    break label;
+                    return;
                 }
             }
         }
@@ -79,7 +78,7 @@ public class Controller extends Rectangle implements Model.FlagManager {
                     new Random().nextInt(logicModel.size),
                     new Random().nextInt(logicModel.size)
             );
-            logicModel.getBoard().set(firstRandomClick.getKey(), firstRandomClick.getValue());
+            logicModel.getBoard().initField(firstRandomClick.getKey(), firstRandomClick.getValue());
         }
 
         checkFinish();
@@ -102,7 +101,7 @@ public class Controller extends Rectangle implements Model.FlagManager {
 
         if (isFirstClick) {
             isFirstClick = false;
-            logicModel.getBoard().set(x, y);
+            logicModel.getBoard().initField(x, y);
             view.enableHint(true);
         }
         else {
@@ -139,15 +138,15 @@ public class Controller extends Rectangle implements Model.FlagManager {
         }
     }
 
-    private void openTile(Model.ReadableCell cell, boolean asBoom) {
+    private void openTile(Model.Cell cell, boolean asBoom) {
         if (cell.isMine()) {
             if (asBoom) {
-                view.detonateBomb(cell.x(), cell.y());
+                view.detonateBomb(cell.x, cell.y);
             } else {
-                view.openTileAsBomb(cell.x(), cell.y());
+                view.openTileAsBomb(cell.x, cell.y);
             }
         } else {
-            view.openTile(cell.x(), cell.y(), cell.getNeighbourBombs());
+            view.openTile(cell.x, cell.y, cell.getNeighbourBombs());
         }
     }
 
@@ -157,11 +156,11 @@ public class Controller extends Rectangle implements Model.FlagManager {
                 Model.Cell cell = logicModel.getBoard().getCells()[i][j];
 
                 if (!cell.isOpen()) {
-                    cell.open();
-                    if (cell.hasBomb()) {
+                    logicModel.getBoard().openCell(i, j);
+                    if (cell.isMine()) {
                         view.openTileAsBomb(i, j);
                     } else {
-                        view.openTile(i, j, cell.neighbourBombs);
+                        view.openTile(i, j, cell.getNeighbourBombs());
                     }
                 }
             }

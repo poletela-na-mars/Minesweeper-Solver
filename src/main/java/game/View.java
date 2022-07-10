@@ -15,6 +15,8 @@ import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class View extends Application {
@@ -22,32 +24,32 @@ public class View extends Application {
 
     public static final double MAIN_BOARD_SIZE = 750.0;
 
-    public static final ImagePattern FLAG = new ImagePattern(new Image("flag.png"));
+    public static final ImagePattern FLAG = new ImagePattern(new Image("flag_small.png"));
 
-    public static final ImagePattern FLAG_SELECTED = new ImagePattern(new Image("flag_selected.png"));
+    public static final ImagePattern FLAG_SELECTED = new ImagePattern(new Image("flag_selected_small.png"));
 
-    public static final ImagePattern FLAG_NOT_SELECTED = new ImagePattern(new Image("flag_not_selected.png"));
+    public static final ImagePattern FLAG_NOT_SELECTED = new ImagePattern(new Image("flag_not_selected_small.png"));
 
     private static final Image imageIcon = new Image("minesweeper_icon.jpg");
 
-    public static final int DEFAULT_BOARD_SIZE = 10;
+    //public static final int DEFAULT_BOARD_SIZE = 10;
 
     private boolean setFlag = false;
 
-    public static final int DEFAULT_NUM_OF_BOMBS = 15;
+    //public static final int DEFAULT_NUM_OF_BOMBS = 15;
 
-    String regex = "\\d+";
+    //String regex = "\\d+";
 
     private final Stage appStage = new Stage();
     private final Stage messageStage = new Stage();
     
-    public static int boardSize = DEFAULT_BOARD_SIZE;
+    private static int boardSize = 10;
 
-    public static double tileSize;
+    private static double tileSize;
 
-    private int numOfBombs = DEFAULT_NUM_OF_BOMBS;
+    private int numOfBombs = 15;
 
-    public static Group tileGroup = new Group();
+    private final Group tileGroup = new Group();
 
     private final Button buttonHint = new Button("Hint");
     private final Button buttonSolver = new Button("Solver");
@@ -75,7 +77,7 @@ public class View extends Application {
         });
         flag.setFill(FLAG_NOT_SELECTED);
 
-        buttonSolver.relocate(MAIN_BOARD_SIZE / 2.0 + 465, MAIN_BOARD_SIZE - 300); //
+        buttonSolver.relocate(MAIN_BOARD_SIZE / 2.0 + 465, MAIN_BOARD_SIZE - 300);
         buttonSolver.setStyle("-fx-background-color: orange; -fx-text-fill: white");
         buttonSolver.setFont(font);
         buttonHint.relocate(MAIN_BOARD_SIZE / 2.0 + 470, MAIN_BOARD_SIZE - 350); //
@@ -139,7 +141,7 @@ public class View extends Application {
         text.setFont(font);
         text.setStyle("-fx-text-fill: dimgrey");
         text.relocate(120, 100);
-        TextField sizeOfField = new TextField(String.format("%d", DEFAULT_BOARD_SIZE));
+        TextField sizeOfField = new TextField(String.format("%d", 10));
         sizeOfField.relocate(250, 150);
         sizeOfField.setPrefSize(45, 25);
         sizeOfField.setFont(font);
@@ -148,7 +150,7 @@ public class View extends Application {
         labelSize.setFont(font);
         labelSize.setStyle("-fx-text-fill: dimgrey");
         labelSize.relocate(85, 150);
-        TextField bombsCount = new TextField(String.format("%d", DEFAULT_NUM_OF_BOMBS));
+        TextField bombsCount = new TextField(String.format("%d", 15));
         bombsCount.relocate(250, 200);
         bombsCount.setPrefSize(45, 25);
         bombsCount.setFont(font);
@@ -162,16 +164,12 @@ public class View extends Application {
         buttonOK.setFont(font);
         buttonOK.setStyle("-fx-text-fill: white; -fx-background-color: orange");
         buttonOK.setOnMouseClicked(event -> {
-            if (Pattern.matches(regex, sizeOfField.getText()) && Pattern.matches(regex, bombsCount.getText())) {
-                boardSize = Integer.parseInt(sizeOfField.getText());
-                numOfBombs = Integer.parseInt(bombsCount.getText());
-                if ((boardSize * boardSize <= numOfBombs) || (boardSize > 25) || (boardSize < 2) || (numOfBombs < 1)) {
-                    // если ввели бомб больше, чем поле,
-                    // или бомб на все поле, или доска больше 25х25 (для улучшения быстроты отрисовки и отклика),
-                    // или доска меньше 2x2, или бомб меньше одной,
-                    // то стандартные условия
-                    boardSize = DEFAULT_BOARD_SIZE;
-                    numOfBombs = DEFAULT_NUM_OF_BOMBS;
+            if (Pattern.matches("\\d+", sizeOfField.getText()) && Pattern.matches("\\d+", bombsCount.getText())) {
+                int newBoardSize = Integer.parseInt(sizeOfField.getText());
+                int newNumOfBombs = Integer.parseInt(bombsCount.getText());
+                if ((newBoardSize * newBoardSize > newNumOfBombs) && (newBoardSize >= 2) && (newNumOfBombs >= 1)) {
+                    boardSize = newBoardSize;
+                    numOfBombs = newNumOfBombs;
                 }
                 appStage.close();
             }
@@ -201,18 +199,26 @@ public class View extends Application {
         int y;
 
         private static Image getImageNumber(int num) {
-            return new Image("image" + num + ".jpg");
+            return new Image("image" + num + "_small.png");
         }
 
-        public static final ImagePattern CLOSED_IMAGE = new ImagePattern(new Image("high quality/closed.jpg"));
+        public static final Map<Integer, Image> neighbourMinesImages = new HashMap<>();
 
-        public static final Image IMAGE_BOMB = new Image("high quality/bomb.png");
+        static {
+            for (int i = 0; i < 9; i++) {
+                neighbourMinesImages.put(i, getImageNumber(i));
+            }
+        }
 
-        public static final Image IMAGE_BOOM = new Image("high quality/bomb_boom.png");
+        public static final ImagePattern CLOSED_IMAGE = new ImagePattern(new Image("closed_small.jpg"));
+
+        public static final Image IMAGE_BOMB = new Image("bomb_small.png");
+
+        public static final Image IMAGE_BOOM = new Image("bomb_boom_small.png");
 
 
         public void open(int numOfNeighbours) {
-            setFill(new ImagePattern(getImageNumber(numOfNeighbours)));
+            setFill(new ImagePattern(neighbourMinesImages.get(numOfNeighbours)));
         }
 
         public void openAsBomb() {
